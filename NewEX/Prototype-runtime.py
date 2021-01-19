@@ -6,6 +6,9 @@ Created on Thu Jun 12 19:39:06 2020
 @author: hongxing
 """
 
+import sys
+import argparse
+
 import torch
 import os
 import torchvision as tv
@@ -13,7 +16,6 @@ import pandas as pd
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
-import argparse
 import numpy as np
 import scipy.misc
 import imageio
@@ -25,6 +27,17 @@ from Architectures import CIFDtcAnom, MSTDtcAnom
 from mydataloader import MyDataset, GrayDataset
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+parser = argparse.ArgumentParser()
+parser.description='configuration'
+parser.add_argument("-i", "--input", help="path of input picture", required=True)
+parser.add_argument("-t", "--threshold", help="anomaly score threshold", type=float, required=True)
+args = parser.parse_args()
+
+
+print(args)
+
 
 
 def AnomScore(inputs, detector):
