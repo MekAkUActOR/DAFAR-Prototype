@@ -177,7 +177,7 @@ class MNISTDecoder(nn.Module):
 
 class MSTreAE(nn.Module):
     def __init__(self):
-        super(MNISTNet, self).__init__()
+        super(MSTreAE, self).__init__()
         self.conv1 = nn.Sequential(     
             nn.Conv2d(1, 32, 3, padding = 1), 
             nn.ReLU(),      
