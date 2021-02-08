@@ -26,7 +26,7 @@ from layers import SinkhornDistance
 from Architectures import MSTreAE, MSTDtcAnom
 from mydataloader import MyDataset, GrayDataset
 
-
+'''
 parser = argparse.ArgumentParser()
 parser.description='configuration'
 parser.add_argument("-i", "--input", help="path of input picture", required=True)
@@ -36,6 +36,7 @@ parser.add_argument("-t", "--threshold", help="anomaly score threshold", type=fl
 args = parser.parse_args()
 
 print(args)
+'''
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -89,27 +90,18 @@ def setThres(arry):
 # load parameters of models
 reAE = MSTreAE().to(device)
 model_dict = reAE.state_dict()
-if device == "cpu":
-    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=torch.device('cpu'))
-else:
-    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth')
+pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=device)
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 reAE.load_state_dict(model_dict)
-if device == "cpu":
-    pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=torch.device('cpu'))
-else:
-    pretrained_dict = torch.load('./model/MNIST/Decoder.pth')
+pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=device)
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 reAE.load_state_dict(model_dict)
 reAE.eval()
 
 detector = MSTDtcAnom().to(device)
-if device == "cpu":
-    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
-else:
-    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth'))
+detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=device))
 detector.eval()
 
 
