@@ -58,44 +58,35 @@ def AnomScore(inputs, detector):
     return l2
 
 
+# load parameters of models
 reAE = MSTreAE().to(device)
 model_dict = reAE.state_dict()
-if device == "cpu":
-    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=torch.device('cpu'))
-else:
-    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth')
+pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=device)
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 reAE.load_state_dict(model_dict)
-if device == "cpu":
-    pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=torch.device('cpu'))
-else:
-    pretrained_dict = torch.load('./model/MNIST/Decoder.pth')
+pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=device)
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 reAE.load_state_dict(model_dict)
 reAE.eval()
 
 detector = MSTDtcAnom().to(device)
-if device == "cpu":
-    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
-else:
-    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth'))
+detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=device))
 detector.eval()
 
-if __name__ == "__main__":
     
-    sample = args.input #"./6a.jpg"
-    threshold = args.threshold #23.333
-    
-    inputs = torch.from_numpy(np.array(imageio.imread(sample)).astype(float).reshape(1,1,28,28)/255).to(device)
-    outputs, substract = REgener(inputs, reAE)
-    output=np.argmax(outputs.data.cpu().numpy())
-    score = AnomScore(substract, detector)
-    if score > threshold:
-        print("\033[37;41mATTACK!\033[0m")
-    else:
-        print(output)
+sample = args.input #"./6a.jpg"
+threshold = args.threshold #23.333
+
+inputs = torch.from_numpy(np.array(imageio.imread(sample)).astype(float).reshape(1,1,28,28)/255).to(device)
+outputs, substract = REgener(inputs, reAE)
+output=np.argmax(outputs.data.cpu().numpy())
+score = AnomScore(substract, detector)
+if score > threshold:
+    print("\033[37;41mATTACK!\033[0m")
+else:
+    print(output)
 
 
 

@@ -75,7 +75,7 @@ def AnomScoreSet(dataset, detector):
     wdistances = []
     for data in dataset:
         inputs = data.reshape((1, -1))
-        inputs = inputs.to(device)
+        inputs = torch.from_numpy(inputs).to(device)
         wdistances.append(AnomScore(inputs, detector))
     wdistances = np.array(wdistances)
     return wdistances
@@ -83,7 +83,7 @@ def AnomScoreSet(dataset, detector):
 # get the threshold
 def setThres(arry):
     var = np.std(arry)
-    thres = np.mean(arry) + 2*var
+    thres = np.mean(arry) + 3*var
     return thres
 
 
