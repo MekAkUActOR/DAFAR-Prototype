@@ -39,7 +39,7 @@ print(args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
+# generate the restruction error of a sample
 def REgener(inputs, reAE):
     inputs = inputs.to(device)
     inputs = torch.tensor(inputs, dtype=torch.float32)
@@ -47,6 +47,7 @@ def REgener(inputs, reAE):
     substract = (inputs - decoded).cpu().detach().numpy().squeeze(0)
     return outputs, substract
 
+# calculate the anomly score of a sample
 def AnomScore(inputs, detector):
     inputs = torch.from_numpy(inputs).to(device)
     inputs = inputs.view(inputs.size()[0], -1)

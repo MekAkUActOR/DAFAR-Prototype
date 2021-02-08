@@ -38,6 +38,15 @@ from Architectures import CIFAR10Net_ori, MNISTNet_ori
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
+'''
+parameters:
+torch_model --- the target model
+dataset --- original dataset
+eps_list --- the list of attack intencities
+opt --- 'generate' adversarial examples or just 'evaluate' attack success rate
+clip_min/clip_max --- the minimum/maxmum of pixel values
+'''
 def FGSM(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
 
     if opt == 'evaluate':
@@ -86,67 +95,6 @@ def FGSM(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
             atk_params = {'eps': eps,
                            'clip_min': clip_min,
                            'clip_max': clip_max}
-            adv_x_op = atk_op.generate(x_op, **atk_params)
-            
-            # Run an evaluation of our model against fgsm
-            for xs, ys in dataset:
-                xs, ys = xs.to(device), ys.to(device)
-                adv = torch.from_numpy(sess.run(adv_x_op, feed_dict={x_op: xs}))
-                if ys == np.argmax(torch_model(xs).data.cpu().numpy()):
-                    pred = np.argmax(torch_model(adv).data.cpu().numpy())
-                    if ys != pred:
-                        adv = adv.numpy()
-                        advlist.append(adv)
-            print(len(advlist))
-            advpacklist.append(advlist)
-        return advpacklist
-
-def DF(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
-
-    if opt == 'evaluate':
-        acclist = []
-        for eps in eps_list:
-            sess = tf.Session()
-            x_op = tf.placeholder(tf.float32, shape=(None, c, h, w,))
-            # Convert pytorch model to a tf_model and wrap it in cleverhans
-            tf_model_fn = convert_pytorch_model_to_tf(torch_model)
-            cleverhans_model = CallableModelWrapper(tf_model_fn, output_layer='logits')
-            
-            # Create an FGSM attack
-            atk_op = DeepFool(cleverhans_model, sess=sess)
-            atk_params = {'clip_min': clip_min,
-                          'clip_max': clip_max}
-            adv_x_op = atk_op.generate(x_op, **atk_params)
-            adv_preds_op = tf_model_fn(adv_x_op)
-            
-            # Run an evaluation of our model against fgsm
-            total = 0
-            correct = 0
-            for xs, ys in dataset:
-                xs, ys = xs.to(device), ys.to(device)
-                adv_preds = sess.run(adv_preds_op, feed_dict={x_op: xs})
-                correct += (np.argmax(adv_preds, axis=1) == ys.cpu().detach().numpy()).sum()
-                total += dataset.batch_size
-            
-            acc = float(correct) / total
-            print('Adv accuracy: {:.3f}'.format(acc * 100))
-            acclist.append(acc)
-        return acclist
-        
-    elif opt == 'generate':
-        advpacklist = []
-        for eps in eps_list:
-            advlist = []
-            sess = tf.Session()
-            x_op = tf.placeholder(tf.float32, shape=(None, c, h, w,))
-            # Convert pytorch model to a tf_model and wrap it in cleverhans
-            tf_model_fn = convert_pytorch_model_to_tf(torch_model)
-            cleverhans_model = CallableModelWrapper(tf_model_fn, output_layer='logits')
-            
-            # Create an FGSM attack
-            atk_op = DeepFool(cleverhans_model, sess=sess)
-            atk_params = {'clip_min': clip_min,
-                          'clip_max': clip_max}
             adv_x_op = atk_op.generate(x_op, **atk_params)
             
             # Run an evaluation of our model against fgsm
@@ -300,6 +248,7 @@ def PGD(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
             advpacklist.append(advlist)
         return advpacklist
 
+# save the dataset in the form of npy
 def savedataset(advpacklist, path):
     advset = []
 
@@ -318,7 +267,6 @@ def savedataset(advpacklist, path):
     for advs in advsets:
         np.save(path + str(i)+'.npy', advs)
         i+=1
-
 
 def singleFGSM(torch_model, xs, ys, eps, c, h, w, clip_min, clip_max):
     sess = tf.Session()
@@ -382,67 +330,16 @@ cifargeneloader = torch.utils.data.DataLoader(cifartestset, batch_size=GENESIZE,
 
 
 net = MNISTNet_ori().to(device)
-net.load_state_dict(torch.load('./model/MNIST/Tclassifier.pth', map_location=torch.device('cpu')))
+net.load_state_dict(torch.load('./model/MNIST/Tclassifier.pth', map_location=device))
 net.eval()
 
 netc = CIFAR10Net_ori().to(device)
-netc.load_state_dict(torch.load('./model/CIFAR10/Tclassifier.pth', map_location=torch.device('cpu')))
+netc.load_state_dict(torch.load('./model/CIFAR10/Tclassifier.pth', device))
 netc.eval()
 
-'''
-for data in mnistgeneloader:
-    xs, ys = data
-    if ys.numpy() == [3]:
-        xs, ys = xs.to(device), ys.to(device)
-        if ys == np.argmax(net(xs).data.cpu().numpy()):
-            ori = xs.numpy()
-            adv = singleFGSM(net, xs, ys, 0.2, 1, 28, 28, 0, 1)
-            if len(adv):
-                break
-            else:
-                continue
-        else:
-            continue
-    else:
-        continue
-
-plt.figure()
-plt.imshow(ori.reshape(28, 28), cmap='gray')
-plt.savefig('./figures/ori3.jpg')
-plt.close()
-
-
-plt.figure()
-plt.imshow(adv.reshape(28, 28), cmap='gray')
-plt.savefig('./figures/fgsm3.jpg')
-plt.close()
-'''
-
-
-
-
-
-
 
 '''
-FGSM(net, mnistevalloader, [0., 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4], 'evaluate', 1, 28, 28, 0, 1)
-DF(net, mnistevalloader, [0], 'evaluate', 1, 28, 28, 0, 1)
-CW2(net, mnistevalloader, [0], 'evaluate', 1, 28, 28, 0, 1)
-PGD(net, mnistevalloader, [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4], 'evaluate', 1, 28, 28, 0, 1)
-'''
-'''
-advpacklist = CW2(net, mnistgeneloader, [0], 'generate', 1, 28, 28, 0, 1)      
-savedataset(advpacklist, './dataset/MNIST/cw/cw')
-
-advpacklist = CW2(netc, cifargeneloader, [0], 'generate', 3, 32, 32, -1, 1)      
-savedataset(advpacklist, './dataset/CIFAR10/cw/cw')
-
-advpacklist = DF(net, mnistgeneloader, [0], 'generate', 1, 28, 28, 0, 1)      
-savedataset(advpacklist, './dataset/MNIST/df/df')
-
-advpacklist = DF(netc, cifargeneloader, [0], 'generate', 3, 32, 32, -1, 1)      
-savedataset(advpacklist, './dataset/CIFAR10/df/df')
-
+# generate adversarial example sets of epsilons in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4] and save in the file './dataset/CIFAR10/pgd/pgd'
 advpacklist = PGD(netc, cifargeneloader, [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4], 'generate', 3, 32, 32, -1, 1)      
 savedataset(advpacklist, './dataset/CIFAR10/pgd/pgd')  
 '''
