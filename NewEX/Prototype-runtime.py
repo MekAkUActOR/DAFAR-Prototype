@@ -26,7 +26,7 @@ from layers import SinkhornDistance
 from Architectures import MSTreAE, MSTDtcAnom
 from mydataloader import MyDataset, GrayDataset
 
-'''
+
 parser = argparse.ArgumentParser()
 parser.description='configuration'
 parser.add_argument("-i", "--input", help="path of input picture", required=True)
@@ -34,9 +34,8 @@ parser.add_argument("-t", "--threshold", help="anomaly score threshold", type=fl
 #parser.add_argument("-m", "--model", help="path of model parameter", required=True)
 #parser.add_argument("-n", "--network", help="path of network file", required=True)
 args = parser.parse_args()
-'''
 
-#print(args)
+print(args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -61,31 +60,40 @@ def AnomScore(inputs, detector):
 
 reAE = MSTreAE().to(device)
 model_dict = reAE.state_dict()
-pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=torch.device('cpu'))
+if device == "cpu":
+    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=torch.device('cpu'))
+else:
+    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth')
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 reAE.load_state_dict(model_dict)
-pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=torch.device('cpu'))
+if device == "cpu":
+    pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=torch.device('cpu'))
+else:
+    pretrained_dict = torch.load('./model/MNIST/Decoder.pth')
 pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 reAE.load_state_dict(model_dict)
 reAE.eval()
 
 detector = MSTDtcAnom().to(device)
-detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
+if device == "cpu":
+    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
+else:
+    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth'))
 detector.eval()
 
 if __name__ == "__main__":
     
-    sample = "./6a.jpg" #args.input
-    threshold = 23.333 #args.threshold
+    sample = args.input #"./6a.jpg"
+    threshold = args.threshold #23.333
     
     inputs = torch.from_numpy(np.array(imageio.imread(sample)).astype(float).reshape(1,1,28,28)/255).to(device)
     outputs, substract = REgener(inputs, reAE)
     output=np.argmax(outputs.data.cpu().numpy())
     score = AnomScore(substract, detector)
     if score > threshold:
-        print('ATTACK!')
+        print("\033[37;41mATTACK!\033[0m")
     else:
         print(output)
 

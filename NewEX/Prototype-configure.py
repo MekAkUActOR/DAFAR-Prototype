@@ -6,6 +6,9 @@ Created on Thu Jun 12 19:39:06 2020
 @author: hongxing
 """
 
+import sys
+import argparse
+
 import torch
 import os
 import torchvision as tv
@@ -13,7 +16,6 @@ import pandas as pd
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
-import argparse
 import numpy as np
 import scipy.misc
 import imageio
@@ -21,126 +23,79 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from layers import SinkhornDistance
 
-from Architectures import CIFDtcAnom, MSTDtcAnom
+from Architectures import MSTreAE, MSTDtcAnom
 from mydataloader import MyDataset, GrayDataset
+
+
+parser = argparse.ArgumentParser()
+parser.description='configuration'
+parser.add_argument("-i", "--input", help="path of input picture", required=True)
+parser.add_argument("-t", "--threshold", help="anomaly score threshold", type=float, required=True)
+#parser.add_argument("-m", "--model", help="path of model parameter", required=True)
+#parser.add_argument("-n", "--network", help="path of network file", required=True)
+args = parser.parse_args()
+
+print(args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def AnomScore(inputs, detector):
-
+def REgener(inputs, reAE):
     inputs = inputs.to(device)
+    inputs = torch.tensor(inputs, dtype=torch.float32)
+    decoded, outputs = reAE(inputs)
+    substract = (inputs - decoded).cpu().detach().numpy().squeeze(0)
+    return outputs, substract
+
+def AnomScore(inputs, detector):
+    inputs = torch.from_numpy(inputs).to(device)
+    inputs = inputs.view(inputs.size()[0], -1)
     outputs = detector(inputs)
-    '''
-    sinkhorn = SinkhornDistance(eps=0.1, max_iter=100, reduction=None)
-    dis, P, C = sinkhorn(outputs, inputs)
-    wdistances.append(dis.data.numpy().squeeze(0))
-    '''
     substract = (inputs - outputs).cpu().detach().numpy().squeeze(0)
     l2 = 0
     for channel in substract:
         l2 += np.linalg.norm(channel)
     return l2
 
-def AnomScoreSet(dataset, detector, c, h, w):
-    wdistances = []
-    for data in dataset:
-        inputs = torch.reshape(data, (1, c*h*w))
-        inputs = inputs.to(device)
-        wdistances.append(AnomScore(inputs, detector))
-    wdistances = np.array(wdistances)
-    return wdistances
-'''
-msttestset = MyDataset('./dataset/MNIST/normal/testre.npy')
-msttestloader = torch.utils.data.DataLoader(msttestset, batch_size=1, shuffle=True, pin_memory=True)
 
-mdetector = MSTDtcAnom().to(device)
-mdetector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
-mdetector.eval()
-'''
+reAE = MSTreAE().to(device)
+model_dict = reAE.state_dict()
+if device == "cpu":
+    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth', map_location=torch.device('cpu'))
+else:
+    pretrained_dict = torch.load('./model/MNIST/Tclassifier.pth')
+pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+model_dict.update(pretrained_dict)
+reAE.load_state_dict(model_dict)
+if device == "cpu":
+    pretrained_dict = torch.load('./model/MNIST/Decoder.pth', map_location=torch.device('cpu'))
+else:
+    pretrained_dict = torch.load('./model/MNIST/Decoder.pth')
+pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+model_dict.update(pretrained_dict)
+reAE.load_state_dict(model_dict)
+reAE.eval()
 
-ciftestset = MyDataset('./dataset/CIFAR10/normal/testre.npy')
-ciftestloader = torch.utils.data.DataLoader(ciftestset, batch_size=1, shuffle=True, pin_memory=True)
+detector = MSTDtcAnom().to(device)
+if device == "cpu":
+    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
+else:
+    detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth'))
+detector.eval()
 
-cdetector = CIFDtcAnom().to(device)
-cdetector.load_state_dict(torch.load('./model/DETECTOR/CIFDtcAnomL2.pth', map_location=torch.device('cpu')))
-cdetector.eval()
-
-'''
-wdistances = AnomScoreSet(msttestloader, mdetector, 1, 28, 28)
-np.save('./distance/l2/MNIST/normal/testrere.npy', wdistances)
-print('Max',np.max(wdistances))
-print('Min',np.min(wdistances))
-print('Mean',np.mean(wdistances))
-print('Mid',np.median(wdistances))
-print('------------------------------------')
-
-
-wdistances = AnomScoreSet(ciftestloader, cdetector, 3, 32, 32)
-np.save('./distance/l2/CIFAR10/normal/testrere.npy', wdistances)
-print('Max',np.max(wdistances))
-print('Min',np.min(wdistances))
-print('Mean',np.mean(wdistances))
-print('Mid',np.median(wdistances))
-print('------------------------------------')
-'''
-
-
-i = 1
-while i <= 8:
-    '''
-    mstfgsmset = MyDataset('./dataset/MNIST/fgsm/fgsm'+str(i)+'re.npy')
-    mstfgsmloader = torch.utils.data.DataLoader(mstfgsmset, batch_size=1, shuffle=True, pin_memory=True)
+if __name__ == "__main__":
     
-    mstpgdset = MyDataset('./dataset/MNIST/pgd/pgd'+str(i)+'re.npy')
-    mstpgdloader = torch.utils.data.DataLoader(mstpgdset, batch_size=1, shuffle=True, pin_memory=True)
-      
-    ciffgsmset = MyDataset('./dataset/CIFAR10/fgsm/fgsm'+str(i)+'re.npy')
-    ciffgsmloader = torch.utils.data.DataLoader(ciffgsmset, batch_size=1, shuffle=True, pin_memory=True)
-    '''
-    cifpgdset = MyDataset('./dataset/CIFAR10/pgd/pgd'+str(i)+'re.npy')
-    cifpgdloader = torch.utils.data.DataLoader(cifpgdset, batch_size=1, shuffle=True, pin_memory=True)
+    sample = args.input #"./6a.jpg"
+    threshold = args.threshold #23.333
     
-    '''
-    wdistances = AnomScoreSet(mstfgsmloader, mdetector, 1, 28, 28)
-    np.save('./distance/l2/MNIST/fgsm/fgsm'+str(i)+'rere.npy', wdistances)
-    print('MNIST fgsm', i)
-    print('Max',np.max(wdistances))
-    print('Min',np.min(wdistances))
-    print('Mean',np.mean(wdistances))
-    print('Mid',np.median(wdistances))
-    print('------------------------------------')
-    
-    wdistances = AnomScoreSet(mstpgdloader, mdetector, 1, 28, 28)
-    np.save('./distance/l2/MNIST/pgd/pgd'+str(i)+'rere.npy', wdistances)
-    print('MNIST pgd', i)
-    print('Max',np.max(wdistances))
-    print('Min',np.min(wdistances))
-    print('Mean',np.mean(wdistances))
-    print('Mid',np.median(wdistances))
-    print('------------------------------------')
-    
-    
-    wdistances = AnomScoreSet(ciffgsmloader, cdetector, 3, 32, 32)
-    np.save('./distance/l2/CIFAR10/fgsm/fgsm'+str(i)+'rere.npy', wdistances)
-    print('CIFAR10 fgsm', i)
-    print('Max',np.max(wdistances))
-    print('Min',np.min(wdistances))
-    print('Mean',np.mean(wdistances))
-    print('Mid',np.median(wdistances))
-    print('------------------------------------')
-    '''
-    wdistances = AnomScoreSet(cifpgdloader, cdetector, 3, 32, 32)
-    np.save('./distance/l2/CIFAR10/pgd/pgd'+str(i)+'rere.npy', wdistances)
-    print('CIFAR10 pgd', i)
-    print('Max',np.max(wdistances))
-    print('Min',np.min(wdistances))
-    print('Mean',np.mean(wdistances))
-    print('Mid',np.median(wdistances))
-    print('------------------------------------')
-    i += 1
-
-
+    inputs = torch.from_numpy(np.array(imageio.imread(sample)).astype(float).reshape(1,1,28,28)/255).to(device)
+    outputs, substract = REgener(inputs, reAE)
+    output=np.argmax(outputs.data.cpu().numpy())
+    score = AnomScore(substract, detector)
+    if score > threshold:
+        print("\033[37;41mATTACK!\033[0m")
+    else:
+        print(output)
 
 
 
