@@ -40,6 +40,7 @@ print(args)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+# generate the restruction error of a sample
 def REgener(inputs, reAE):
     inputs = inputs.to(device)
     inputs = torch.tensor(inputs, dtype=torch.float32)
@@ -47,9 +48,20 @@ def REgener(inputs, reAE):
     substract = (inputs - decoded).cpu().detach().numpy().squeeze(0)
     return outputs, substract
 
+# generate the restruction error set of a train set
+def ReSet(dataset, reAE):
+    recons = []
+    for data in dataset:
+        inputs, labels = data
+        inputs, labels = inputs.to(device), labels.to(device)
+        decoded, outputs = reAE(inputs)
+        substract = (inputs - decoded).cpu().detach().numpy().squeeze(0)
+        recons.append(substract)
+    return recons
+
+# calculate the anomly score of a sample
 def AnomScore(inputs, detector):
-    inputs = torch.from_numpy(inputs).to(device)
-    inputs = inputs.view(inputs.size()[0], -1)
+    inputs = inputs.to(device)
     outputs = detector(inputs)
     substract = (inputs - outputs).cpu().detach().numpy().squeeze(0)
     l2 = 0
@@ -57,7 +69,24 @@ def AnomScore(inputs, detector):
         l2 += np.linalg.norm(channel)
     return l2
 
+# generate the anomly score set of a train set
+def AnomScoreSet(dataset, detector):
+    wdistances = []
+    for data in dataset:
+        inputs = data.reshape((1, -1))
+        inputs = inputs.to(device)
+        wdistances.append(AnomScore(inputs, detector))
+    wdistances = np.array(wdistances)
+    return wdistances
 
+# get the threshold
+def setThres(arry):
+    var = np.std(arry)
+    thres = np.mean(arry) + 2*var
+    return thres
+
+
+# load parameters of models
 reAE = MSTreAE().to(device)
 model_dict = reAE.state_dict()
 if device == "cpu":
@@ -83,19 +112,39 @@ else:
     detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth'))
 detector.eval()
 
-if __name__ == "__main__":
-    
-    sample = args.input #"./6a.jpg"
-    threshold = args.threshold #23.333
-    
-    inputs = torch.from_numpy(np.array(imageio.imread(sample)).astype(float).reshape(1,1,28,28)/255).to(device)
-    outputs, substract = REgener(inputs, reAE)
-    output=np.argmax(outputs.data.cpu().numpy())
-    score = AnomScore(substract, detector)
-    if score > threshold:
-        print("\033[37;41mATTACK!\033[0m")
-    else:
-        print(output)
 
+# load dataset
+transform1 = transforms.ToTensor()
+
+msttrainset = tv.datasets.MNIST(
+    root='./mnist/',
+    train=True,
+    download=True,
+    transform=transform1)
+
+msttrainloader = torch.utils.data.DataLoader(
+    msttrainset,
+    batch_size=1,
+    shuffle=True,
+    )
+
+msttestset = tv.datasets.MNIST(
+    root='./mnist/',
+    train=False,
+    download=True,
+    transform=transform1)
+
+msttestloader = torch.utils.data.DataLoader(
+    msttestset,
+    batch_size=1,
+    shuffle=False,
+    )
+
+
+# main program
+recons = ReSet(msttrainloader,reAE)
+wdistances = AnomScoreSet(recons, detector)
+threshold = setThres(wdistances)
+print(threshold)
 
 

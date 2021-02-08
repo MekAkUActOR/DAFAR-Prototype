@@ -46,22 +46,22 @@ def AnomScoreSet(dataset, detector, c, h, w):
         wdistances.append(AnomScore(inputs, detector))
     wdistances = np.array(wdistances)
     return wdistances
-'''
+
 msttestset = MyDataset('./dataset/MNIST/normal/testre.npy')
 msttestloader = torch.utils.data.DataLoader(msttestset, batch_size=1, shuffle=True, pin_memory=True)
 
 mdetector = MSTDtcAnom().to(device)
 mdetector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_location=torch.device('cpu')))
 mdetector.eval()
-'''
 
+'''
 ciftestset = MyDataset('./dataset/CIFAR10/normal/testre.npy')
 ciftestloader = torch.utils.data.DataLoader(ciftestset, batch_size=1, shuffle=True, pin_memory=True)
 
 cdetector = CIFDtcAnom().to(device)
 cdetector.load_state_dict(torch.load('./model/DETECTOR/CIFDtcAnomL2.pth', map_location=torch.device('cpu')))
 cdetector.eval()
-
+'''
 '''
 wdistances = AnomScoreSet(msttestloader, mdetector, 1, 28, 28)
 np.save('./distance/l2/MNIST/normal/testrere.npy', wdistances)
@@ -84,19 +84,20 @@ print('------------------------------------')
 
 i = 1
 while i <= 8:
-    '''
+
     mstfgsmset = MyDataset('./dataset/MNIST/fgsm/fgsm'+str(i)+'re.npy')
     mstfgsmloader = torch.utils.data.DataLoader(mstfgsmset, batch_size=1, shuffle=True, pin_memory=True)
-    
+    '''
     mstpgdset = MyDataset('./dataset/MNIST/pgd/pgd'+str(i)+'re.npy')
     mstpgdloader = torch.utils.data.DataLoader(mstpgdset, batch_size=1, shuffle=True, pin_memory=True)
       
     ciffgsmset = MyDataset('./dataset/CIFAR10/fgsm/fgsm'+str(i)+'re.npy')
     ciffgsmloader = torch.utils.data.DataLoader(ciffgsmset, batch_size=1, shuffle=True, pin_memory=True)
     '''
+    '''
     cifpgdset = MyDataset('./dataset/CIFAR10/pgd/pgd'+str(i)+'re.npy')
     cifpgdloader = torch.utils.data.DataLoader(cifpgdset, batch_size=1, shuffle=True, pin_memory=True)
-    
+    '''
     '''
     wdistances = AnomScoreSet(mstfgsmloader, mdetector, 1, 28, 28)
     np.save('./distance/l2/MNIST/fgsm/fgsm'+str(i)+'rere.npy', wdistances)
