@@ -26,17 +26,6 @@ from Architectures import MSTreAE, MSTDtcAnom
 from mydataloader import MyDataset, GrayDataset
 
 
-parser = argparse.ArgumentParser()
-parser.description='configuration'
-parser.add_argument("-y", "--type", help="type of input dataset: adversarial or normal", required=True)
-parser.add_argument("-i", "--input", help="path of input dataset", required=True)
-parser.add_argument("-t", "--threshold", help="anomaly score threshold", type=float, required=True)
-#parser.add_argument("-m", "--model", help="path of model parameter", required=True)
-#parser.add_argument("-n", "--network", help="path of network file", required=True)
-args = parser.parse_args()
-
-print(args)
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # generate the restruction error of a sample
@@ -77,9 +66,9 @@ detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_loc
 detector.eval()
 
     
-setpath = args.input #./dataset/MNIST/fgsm/fgsm1.npy"
-threshold = args.threshold #23.333
-settype = args.type
+setpath = "./dataset/MNIST/fgsm/fgsm1.npy"
+threshold = 23.333
+settype = "normal"
 
 if settype == "adversarial":
     mstattackset = MyDataset(setpath)

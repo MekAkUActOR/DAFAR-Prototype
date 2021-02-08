@@ -21,7 +21,6 @@ import scipy.misc
 import imageio
 from PIL import Image
 import matplotlib.pyplot as plt
-from layers import SinkhornDistance
 
 from Architectures import MSTreAE, MSTDtcAnom
 from mydataloader import MyDataset, GrayDataset
