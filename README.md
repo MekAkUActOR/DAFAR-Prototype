@@ -33,9 +33,13 @@ We propose DAFAR, a feedback framework that allows deep learning models to detec
   - mydataloader.py: 数据集类
   - Prototype-configure.py: 计算 Anomaly Score 阈值
   - Prototype-runtime.py: 判断一个样本是否为对抗样本
-  - Prototype-test.py: 测试该原型系统对于对抗样本的检出率与对正常样本的假阳性率
+  - Prototype-test.py: 测试该原型系统对于对抗样本的检出率与对正常样本的假阳性率，以及目标网络对MNIST数据集的分类准确率 
 - README.md
 - DAFAR原型系统开发计划.pptx: 介绍了该原型系统的结构与功能
+
+### Dependency
+
+pytorch, torchvision, pandas, scipy, imageio, matplotlib, pillow, cleverhans
 
 ### 使用方法
 
@@ -43,5 +47,5 @@ We propose DAFAR, a feedback framework that allows deep learning models to detec
 2. 将用正常样本训练好的各模型参数存放在 model 文件夹中，按已有模型参数命名。
 3. **计算 Anomaly Score 阈值**：在命令行终端输入 `python3 Prototype-configure.py`，等待片刻程序便会在终端打印出阈值的数值。
 4. **判断一个样本是否为对抗样本**：在命令行终端输入 `python3 Prototype-runtime.py -i INPUT -t THRESHOLD`，其中 `INPUT` 是输入的图片路径，`THRESHOLD` 是刚才计算出的阈值。等待片刻程序便会在终端打印出判断结果：对于正常样本，输出正确分类标签；对于对抗样本，输出警告信息。
-5. **测试原型系统准确度**：在命令行终端输入 `python3 Prototype-runtime.py -y TYPE -i INPUT -t THRESHOLD`，其中 `TYPE` 是待测试数据集类型，为 `adversarial` 或 `normal`；`INPUT` 为待测试数据集路径（对抗样本数据集已经提前生成好，可以直接使用）；`THRESHOLD` 是刚才计算出的阈值。等待片刻程序便会在终端打印出结果：对于对抗样本的检出率或对正常样本的假阳性率。
+5. **测试原型系统准确度**：在命令行终端输入 `python3 Prototype-runtime.py -y TYPE -i INPUT -t THRESHOLD`，其中 `TYPE` 是待测试数据集类型，为 `adversarial` 或 `normal`；`INPUT` 为待测试数据集路径（对抗样本数据集已经提前生成好，可以直接使用）；`THRESHOLD` 是刚才计算出的阈值。等待片刻程序便会在终端打印出结果：对于对抗样本的检出率或，或对于正常样本的假阳性率及其分类准确率。
 

@@ -160,4 +160,54 @@ class MSTDtcAnom(nn.Module):
         decoded = x
         return decoded
       
+
+
+
+
+class MNISTNet_ori(nn.Module):
+    def __init__(self):
+        super(MNISTNet_ori, self).__init__()
+        self.conv1 = nn.Sequential(     
+            nn.Conv2d(1, 32, 3, padding = 1), 
+            nn.ReLU(),      
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(32, 32, 3, padding = 1),
+            nn.ReLU(),
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(32, 64, 3, padding = 1),
+            nn.ReLU(),
+        )
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(64, 64, 3, padding = 1),
+            nn.ReLU(),
+        )
+        self.maxpool = nn.MaxPool2d(2, 2, return_indices=True)
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(7 * 7 * 64, 200),
+            nn.ReLU()
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(200, 200),
+            nn.ReLU()
+        )
+        self.fc3 = nn.Linear(200, 10)
+        
+    
+    def forward(self, x):
+        
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x, indices1 = self.maxpool(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x, indices2 = self.maxpool(x)
+
+        x = x.view(x.size()[0], -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.fc3(x)
+        return x
         

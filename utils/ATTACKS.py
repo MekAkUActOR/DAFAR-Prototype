@@ -34,7 +34,7 @@ from cleverhans.model import CallableModelWrapper
 from cleverhans.utils import AccuracyReport
 from cleverhans.utils_pytorch import convert_pytorch_model_to_tf
 
-from Architectures import CIFAR10Net_ori, MNISTNet_ori
+from Architectures import MNISTNet_ori
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -123,7 +123,7 @@ def CW2(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
             
             # Create an FGSM attack
             atk_op = CarliniWagnerL2(cleverhans_model, sess=sess)
-            atk_params = {
+            atk_params = {'confidence': eps,
                            'clip_min': clip_min,
                            'clip_max': clip_max}
             adv_x_op = atk_op.generate(x_op, **atk_params)
@@ -155,7 +155,7 @@ def CW2(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
             
             # Create an FGSM attack
             atk_op = CarliniWagnerL2(cleverhans_model, sess=sess)
-            atk_params = {
+            atk_params = {'confidence': eps,
                            'clip_min': clip_min,
                            'clip_max': clip_max}
             adv_x_op = atk_op.generate(x_op, **atk_params)
@@ -248,6 +248,68 @@ def PGD(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
             advpacklist.append(advlist)
         return advpacklist
 
+def DF(torch_model, dataset, eps_list, opt, c, h, w, clip_min, clip_max):
+
+    if opt == 'evaluate':
+        acclist = []
+        for eps in eps_list:
+            sess = tf.Session()
+            x_op = tf.placeholder(tf.float32, shape=(None, c, h, w,))
+            # Convert pytorch model to a tf_model and wrap it in cleverhans
+            tf_model_fn = convert_pytorch_model_to_tf(torch_model)
+            cleverhans_model = CallableModelWrapper(tf_model_fn, output_layer='logits')
+            
+            # Create an FGSM attack
+            atk_op = DeepFool(cleverhans_model, sess=sess)
+            atk_params = {'clip_min': clip_min,
+                          'clip_max': clip_max}
+            adv_x_op = atk_op.generate(x_op, **atk_params)
+            adv_preds_op = tf_model_fn(adv_x_op)
+            
+            # Run an evaluation of our model against fgsm
+            total = 0
+            correct = 0
+            for xs, ys in dataset:
+                xs, ys = xs.to(device), ys.to(device)
+                adv_preds = sess.run(adv_preds_op, feed_dict={x_op: xs})
+                correct += (np.argmax(adv_preds, axis=1) == ys.cpu().detach().numpy()).sum()
+                total += dataset.batch_size
+            
+            acc = float(correct) / total
+            print('Adv accuracy: {:.3f}'.format(acc * 100))
+            acclist.append(acc)
+        return acclist
+        
+    elif opt == 'generate':
+        advpacklist = []
+        for eps in eps_list:
+            advlist = []
+            sess = tf.Session()
+            x_op = tf.placeholder(tf.float32, shape=(None, c, h, w,))
+            # Convert pytorch model to a tf_model and wrap it in cleverhans
+            tf_model_fn = convert_pytorch_model_to_tf(torch_model)
+            cleverhans_model = CallableModelWrapper(tf_model_fn, output_layer='logits')
+            
+            # Create an FGSM attack
+            atk_op = DeepFool(cleverhans_model, sess=sess)
+            atk_params = {'clip_min': clip_min,
+                          'clip_max': clip_max}
+            adv_x_op = atk_op.generate(x_op, **atk_params)
+            
+            # Run an evaluation of our model against fgsm
+            for xs, ys in dataset:
+                xs, ys = xs.to(device), ys.to(device)
+                adv = torch.from_numpy(sess.run(adv_x_op, feed_dict={x_op: xs}))
+                if ys == np.argmax(torch_model(xs).data.cpu().numpy()):
+                    pred = np.argmax(torch_model(adv).data.cpu().numpy())
+                    if ys != pred:
+                        adv = adv.numpy()
+                        advlist.append(adv)
+            print(len(advlist))
+            advpacklist.append(advlist)
+        return advpacklist
+
+
 # save the dataset in the form of npy
 def savedataset(advpacklist, path):
     advset = []
@@ -321,25 +383,25 @@ mnistgeneloader = torch.utils.data.DataLoader(
     )
 
 
-cifartestset = tv.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform2)
-cifarevalloader = torch.utils.data.DataLoader(cifartestset, batch_size=EVALSIZE,
-                                         shuffle=True, num_workers=2)
-cifargeneloader = torch.utils.data.DataLoader(cifartestset, batch_size=GENESIZE,
-                                         shuffle=True, num_workers=2)
-
-
 net = MNISTNet_ori().to(device)
 net.load_state_dict(torch.load('./model/MNIST/Tclassifier.pth', map_location=device))
 net.eval()
 
-netc = CIFAR10Net_ori().to(device)
-netc.load_state_dict(torch.load('./model/CIFAR10/Tclassifier.pth', device))
-netc.eval()
 
 
 '''
 # generate adversarial example sets of epsilons in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4] and save in the file './dataset/CIFAR10/pgd/pgd'
-advpacklist = PGD(netc, cifargeneloader, [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4], 'generate', 3, 32, 32, -1, 1)      
-savedataset(advpacklist, './dataset/CIFAR10/pgd/pgd')  
+advpacklist = CW2(net, mnistgeneloader, [10, 20, 30, 40], 'generate', 1, 28, 28, 0, 1)      
+savedataset(advpacklist, './dataset/cw/cw')
+
+advpacklist = CW2(net, mnistgeneloader, [10], 'generate', 1, 28, 28, 0, 1)      
+savedataset(advpacklist, './dataset/cw/cw1.npy')
+advpacklist = CW2(net, mnistgeneloader, [20], 'generate', 1, 28, 28, 0, 1)      
+savedataset(advpacklist, './dataset/cw/cw2.npy')
+advpacklist = CW2(net, mnistgeneloader, [5], 'generate', 1, 28, 28, 0, 1)      
+savedataset(advpacklist, './dataset/cw/cw0.npy')
+advpacklist = CW2(net, mnistgeneloader, [30], 'generate', 1, 28, 28, 0, 1)      
+savedataset(advpacklist, './dataset/cw/cw3.npy')
+advpacklist = CW2(net, mnistgeneloader, [40], 'generate', 1, 28, 28, 0, 1)      
+savedataset(advpacklist, './dataset/cw/cw4.npy')
 '''
