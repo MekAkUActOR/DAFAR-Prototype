@@ -66,7 +66,7 @@ for images, labels in test_loader:
     predicted = output(images, net)
     # 只对分类正确的样本，生成对抗样本
     if predicted==labels:
-        r, loop_i, label_orig, label_pert, pert_image = deepfool(images, net, device, overshoot=0.05, max_iter=100)
+        r, loop_i, label_orig, label_pert, pert_image = deepfool(images, net, device, overshoot=5, max_iter=50)
         if label_pert == label_orig:
             correct += 1
         else:
@@ -77,6 +77,6 @@ for images, labels in test_loader:
     if total%1000==0:
         print('准确率: %.4f %%' % (100 * correct / total))
 
-np.save('./dataset/deepfool/deepfool1.npy', advlist)
+np.save('./dataset/deepfool/deepfool5.npy', advlist)
 print('准确率: %.4f %%' % (100 * correct / total)) 
 print('原始准确率: %.4f %%' % (100 * (1 - false / total)))

@@ -77,7 +77,7 @@ detector.load_state_dict(torch.load('./model/DETECTOR/MSTDtcAnomL2.pth', map_loc
 detector.eval()
 
     
-setpath = "./dataset/deepfool/deepfool1.npy"#args.input
+setpath = "./dataset/cw/cw2.npy"#args.input
 threshold = 23.688#args.threshold #
 settype = "adversarial"#args.type#
 

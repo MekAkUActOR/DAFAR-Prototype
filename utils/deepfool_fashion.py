@@ -73,7 +73,7 @@ def deepfool(image, net, device, num_classes=10, overshoot=0.02, max_iter=50):
                 w = w_k
 
         # 扰动r_i=最短距离pert*单位法向量
-        r_i =  (pert+1e-4) * w / np.linalg.norm(w)
+        r_i =  (pert+1e-2) * w / np.linalg.norm(w)
         r_tot = np.float32(r_tot + r_i)
 
         # 加上扰动时，为(1+overshoot)
