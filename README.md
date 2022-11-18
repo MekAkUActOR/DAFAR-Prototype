@@ -1,7 +1,5 @@
 # DAFAR-Prototype
 
-[TOC]
-
 ## DAFAR: Detecting Adversaries by Feedback-Autoencoder Reconstruction --- Prototyping System
 
 Deep learning has shown impressive performance on challenging perceptual tasks. However, researchers found deep neural networks vulnerable to adversarial examples. Since then, many methods are proposed to defend against or detect adversarial examples, but they are either attack-dependent or shown to be ineffective with new attacks.
